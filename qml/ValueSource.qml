@@ -52,281 +52,179 @@ import QtQuick 2.2
 //! [0]
 Item {
     id: valueSource
-    property real kph: 0
-    property real rpm: 1
+    property real kph: accelPedal ? gearMaxLimit : breakPedal ? 0 : gearMinLimit
+    property real rpm: gear == 0 ? 0 : 1
+    property int turnSignal: turnSignalLever ? direction : -1
     property real fuel: 0.85
-    property string gear: {
-        var g;
-        if (kph == 0) {
-            return "P";
-        }
-        if (kph < 30) {
-            return "1";
-        }
-        if (kph < 50) {
-            return "2";
-        }
-        if (kph < 80) {
-            return "3";
-        }
-        if (kph < 120) {
-            return "4";
-        }
-        if (kph < 160) {
-            return "5";
-        }
-    }
-    property int turnSignal: gear == "P" && !start ? randomDirection() : -1
     property real temperature: 0.6
-    property bool start: true
+
+    property bool turnSignalLever: false
+    property int direction: -1
+    property bool accelPedal: false
+    property bool breakPedal: false
+    property int gear: 0
+    property real gearMaxLimit: 40
+    property real gearMinLimit: 0
+    property int speedDuration: 1000
+    property int rpmDuration: 1000
+
 //! [0]
 
-    function randomDirection() {
-        return Math.random() > 0.5 ? Qt.LeftArrow : Qt.RightArrow;
+    Component.onCompleted: forceActiveFocus()
+    Keys.onPressed: {
+        switch (event.key) {
+        case Qt.Key_Shift:
+            switch (direction) {
+            case Qt.RightArrow:
+                direction = -1;
+                turnSignalLever = false;
+                break;
+            case -1:
+                direction = Qt.LeftArrow;
+                turnSignalLever = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case Qt.Key_Tab:
+            switch (direction) {
+            case Qt.LeftArrow:
+                direction = -1;
+                turnSignalLever = false;
+                break;
+            case -1:
+                direction = Qt.RightArrow;
+                turnSignalLever = true;
+                break;
+            default:
+                break;
+            }
+            break;
+        case Qt.Key_Alt:
+            accelPedal = true;
+            if (gear == 0) {
+                gear = 1
+            }
+            rpm = tachometer.maximumValue - 1
+            break;
+        case Qt.Key_Control:
+            breakPedal = true;
+            break;
+        default:
+            console.log("Unassigned Key pressed");
+            break;
+        }
     }
 
-    SequentialAnimation {
-        running: true
-        loops: 1
-
-        // We want a small pause at the beginning, but we only want it to happen once.
-        PauseAnimation {
-            duration: 1000
+    Keys.onReleased: {
+        switch (event.key) {
+        case Qt.Key_Alt:
+            accelPedal = false;
+            rpm = 1;
+            break;
+        case Qt.Key_Control:
+            breakPedal = false;
+            break;
+        default:
+            break;
         }
+    }
 
-        PropertyAction {
-            target: valueSource
-            property: "start"
-            value: false
+    onAccelPedalChanged: {
+        console.log(accelPedal ? "Accel pedal pressed" : "Accel pedal released")
+    }
+    onBreakPedalChanged: {
+        console.log(breakPedal ? "Break pedal pressed" : "Break pedal released")
+    }
+
+    onGearChanged: {
+        switch (gear) {
+        case 0:
+            gearMaxLimit = 40;
+            gearMinLimit = 0;
+            speedDuration = 1000;
+            rpm = 0;
+            break;
+        case 1:
+            gearMaxLimit = 40;
+            gearMinLimit = 15;
+            speedDuration = 1200;
+            rpmDuration = 1000;
+            rpm = 1
+            break;
+        case 2:
+            gearMaxLimit = 60;
+            gearMinLimit = 31;
+            speedDuration = 1500;
+            rpmDuration = 1000;
+            rpm = 1
+            break;
+        case 3:
+            gearMaxLimit = 90
+            gearMinLimit = 51
+            speedDuration = 1800;
+            rpmDuration = 1000;
+            rpm = 3
+            break;
+        case 4:
+            gearMaxLimit = 130
+            gearMinLimit = 80
+            speedDuration = 3000;
+            rpmDuration = 2000;
+            rpm = 4
+            break;
+        case 5:
+            gearMaxLimit = 210
+            gearMinLimit = 120
+            speedDuration = 4000;
+            rpmDuration = 2000;
+            rpm = 5
+            break;
+        default:
+            break;
         }
+    }
 
-        SequentialAnimation {
-            loops: Animation.Infinite
-//! [1]
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    from: 0
-                    to: 30
-                    duration: 3000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    from: 1
-                    to: 6.1
-                    duration: 3000
-                }
-            }
-//! [1]
-            ParallelAnimation {
-                // We changed gears so we lost a bit of speed.
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    from: 30
-                    to: 26
-                    duration: 600
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    from: 6
-                    to: 2.4
-                    duration: 600
-                }
-            }
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 60
-                    duration: 3000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 5.6
-                    duration: 3000
-                }
-            }
-            ParallelAnimation {
-                // We changed gears so we lost a bit of speed.
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 56
-                    duration: 600
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 2.3
-                    duration: 600
-                }
-            }
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 100
-                    duration: 3000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 5.1
-                    duration: 3000
-                }
-            }
-            ParallelAnimation {
-                // We changed gears so we lost a bit of speed.
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 96
-                    duration: 600
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 2.2
-                    duration: 600
-                }
-            }
+    onKphChanged: {
+        if (kph == 0) {
+            gear = 0;
+        }
+        else if (kph > 0 && kph < 30) {
+            gear = 1;
+        }
+        else if (kph >= 30 && kph < 50) {
+            gear = 2;
+        }
+        else if (kph >= 50 && kph < 80) {
+            gear = 3;
+        }
+        else if (kph >= 80 && kph < 120) {
+            gear = 4;
+        }
+        else if (kph >= 120 && kph < 160) {
+            gear = 5;
+        }
+        else {
+            gear = 5;
+        }
+    }
 
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 140
-                    duration: 3000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 6.2
-                    duration: 3000
-                }
-            }
+    onRpmChanged: {
+        if (rpm > 0 && rpm % 1 == 0) {
+            rpm = accelPedal ? tachometer.maximumValue - 1 : 1
+        }
+    }
 
-            // Start downshifting.
+    Behavior on kph {
+        NumberAnimation {
+            duration: speedDuration
+        }
+    }
 
-            // Fifth to fourth gear.
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.Linear
-                    to: 100
-                    duration: 5000
-                }
-
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 3.1
-                    duration: 5000
-                }
-            }
-
-            // Fourth to third gear.
-            NumberAnimation {
-                target: valueSource
-                property: "rpm"
-                easing.type: Easing.InOutSine
-                to: 5.5
-                duration: 600
-            }
-
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 60
-                    duration: 5000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 2.6
-                    duration: 5000
-                }
-            }
-
-            // Third to second gear.
-            NumberAnimation {
-                target: valueSource
-                property: "rpm"
-                easing.type: Easing.InOutSine
-                to: 6.3
-                duration: 600
-            }
-
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 30
-                    duration: 5000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 2.6
-                    duration: 5000
-                }
-            }
-
-            NumberAnimation {
-                target: valueSource
-                property: "rpm"
-                easing.type: Easing.InOutSine
-                to: 6.5
-                duration: 600
-            }
-
-            // Second to first gear.
-            ParallelAnimation {
-                NumberAnimation {
-                    target: valueSource
-                    property: "kph"
-                    easing.type: Easing.InOutSine
-                    to: 0
-                    duration: 5000
-                }
-                NumberAnimation {
-                    target: valueSource
-                    property: "rpm"
-                    easing.type: Easing.InOutSine
-                    to: 1
-                    duration: 4500
-                }
-            }
-
-            PauseAnimation {
-                duration: 5000
-            }
+    Behavior on rpm {
+        NumberAnimation {
+            duration: rpmDuration
         }
     }
 }

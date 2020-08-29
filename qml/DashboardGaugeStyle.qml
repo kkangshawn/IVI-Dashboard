@@ -130,11 +130,40 @@ CircularGaugeStyle {
             readonly property int kphInt: control.value
         }
         Text {
+            id: kmh
             text: "km/h"
             color: "white"
             font.pixelSize: toPixels(0.09)
             anchors.top: speedText.bottom
             anchors.horizontalCenter: parent.horizontalCenter
+        }
+        Text {
+            id: gearmark
+            text: gearStr
+            color: "red"
+            font.pixelSize: toPixels(0.15)
+            anchors.top: kmh.bottom
+            anchors.topMargin: toPixels(0.07)
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            property string gearStr: {
+                if (valueSource.gear === 0) {
+                    return "P"
+                } else if (valueSource.gear === 1) {
+                    return "1"
+                } else if (valueSource.gear === 2) {
+                    return "2"
+                } else if (valueSource.gear === 3) {
+                    return "3"
+                } else if (valueSource.gear === 4) {
+                    return "4"
+                } else if (valueSource.gear === 5) {
+                    return "5"
+                } else {
+                    return "D"
+                }
+            }
+
         }
     }
 
